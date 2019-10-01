@@ -174,3 +174,153 @@ ggp_base +
     ## Warning: Removed 15 rows containing missing values (geom_point).
 
 ![](ggplot_2_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
+
+## more than one dataset
+
+``` r
+central_park = 
+  weather_df %>% 
+  filter(name == "CentralPark_NY")
+
+waikiki = 
+  weather_df %>% 
+  filter(name == "Waikiki_HA")
+
+ggplot(data = waikiki, aes(x = date, y = tmax, color = name)) +
+  geom_point(aes(size = prcp)) + 
+  geom_line(data = central_park)
+```
+
+    ## Warning: Removed 3 rows containing missing values (geom_point).
+
+![](ggplot_2_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
+
+(brief aside about colors)
+
+``` r
+waikiki %>% 
+  ggplot(aes(x = date, y = tmax)) +
+  geom_point(alpha = 0.5, color = "blue")
+```
+
+    ## Warning: Removed 3 rows containing missing values (geom_point).
+
+![](ggplot_2_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+
+## Multi-panel plots
+
+``` r
+ggp_scatter = 
+  weather_df %>% 
+  ggplot(aes(x = tmin, y = tmax)) +
+  geom_point()
+
+ggp_density = 
+  weather_df %>% 
+  ggplot(aes(x = tmin)) + 
+  geom_density()
+
+ggp_box = 
+  weather_df %>% 
+  ggplot(aes(x = name, y = tmax, color = name)) + 
+  geom_boxplot()
+
+ggp_scatter + (ggp_density / ggp_box)
+```
+
+    ## Warning: Removed 15 rows containing missing values (geom_point).
+
+    ## Warning: Removed 15 rows containing non-finite values (stat_density).
+
+    ## Warning: Removed 3 rows containing non-finite values (stat_boxplot).
+
+![](ggplot_2_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
+
+## data manipulation
+
+``` r
+weather_df %>% 
+  mutate(
+    name = factor(name),
+    name = fct_relevel(name, "Waikiki_HA", "CentralPark_NY")
+  ) %>%
+  ggplot(aes(x = name, y = tmax, color = name)) + 
+  geom_boxplot()
+```
+
+    ## Warning: Removed 3 rows containing non-finite values (stat_boxplot).
+
+![](ggplot_2_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
+
+reorder instead of level
+
+``` r
+weather_df %>% 
+  mutate(
+    name = factor(name),
+    name = fct_reorder(name, tmax)
+  ) %>%
+  ggplot(aes(x = name, y = tmax, color = name)) + 
+  geom_boxplot()
+```
+
+    ## Warning: Removed 3 rows containing non-finite values (stat_boxplot).
+
+![](ggplot_2_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
+
+## restructure then plot
+
+``` r
+weather_df %>% 
+  pivot_longer(
+    tmax:tmin,
+    names_to = "observation",
+    values_to = "temperature"
+  ) %>% 
+  ggplot(aes(x = temperature, fill = observation)) +
+  geom_density(alpha = 0.5) +
+  facet_grid(~name) + 
+  theme(legend.position = "bottom")
+```
+
+    ## Warning: Removed 18 rows containing non-finite values (stat_density).
+
+![](ggplot_2_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
+
+## litters and pups
+
+``` r
+pup_data = 
+  read_csv("./data/FAS_pups.csv", col_types = "ciiiii") %>%
+  janitor::clean_names() %>%
+  mutate(sex = recode(sex, `1` = "male", `2` = "female")) 
+
+litter_data = 
+  read_csv("./data/FAS_litters.csv", col_types = "ccddiiii") %>%
+  janitor::clean_names() %>%
+  select(-pups_survive) %>%
+  separate(group, into = c("dose", "day_of_tx"), sep = 3) %>%
+  mutate(wt_gain = gd18_weight - gd0_weight,
+         day_of_tx = as.numeric(day_of_tx))
+
+fas_data = left_join(pup_data, litter_data, by = "litter_number") 
+```
+
+``` r
+fas_data %>% 
+  pivot_longer(
+    pd_ears:pd_walk,
+    names_to = "outcome",
+    values_to = "pn_day"
+  ) %>%
+  drop_na(pn_day, dose, day_of_tx) %>% 
+  mutate(
+    outcome = factor(outcome),
+    outcome = fct_reorder(outcome, pn_day)
+  ) %>% 
+  ggplot(aes(x = dose, y = pn_day)) +
+  geom_violin() +
+  facet_grid(day_of_tx ~ outcome)
+```
+
+![](ggplot_2_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->
